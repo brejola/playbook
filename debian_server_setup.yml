@@ -1,0 +1,59 @@
+---
+- name: Configurar servidor Debian para aplicação crítica
+  hosts: all
+  become: yes
+  vars:
+    timezone: "UTC"
+    allowed_ports:
+      - 22
+
+  tasks:
+    # Atualizar pacotes e instalar ferramentas essenciais
+    - name: Atualizar pacotes e instalar curl, vim e htop
+      apt:
+        name:
+          - curl
+          - vim
+          - htop
+        state: present
+        update_cache: yes
+
+    # Configurar o fuso horário para UTC
+    - name: Configurar o fuso horário para UTC
+      timezone:
+        name: "{{ timezone }}"
+
+    # Habilitar net.ipv4.ip_forward para roteamento
+    - name: Habilitar net.ipv4.ip_forward no kernel
+      sysctl:
+        name: net.ipv4.ip_forward
+        value: "1"
+        state: present
+        reload: yes
+
+    # Instalar e configurar o firewall UFW
+    - name: Instalar o UFW
+      apt:
+        name: ufw
+        state: present
+
+    - name: Permitir tráfego SSH na porta 22
+      ufw:
+        rule: allow
+        port: "{{ allowed_ports }}"
+        proto: tcp
+
+    - name: Configurar o UFW para negar tudo por padrão
+      command: ufw default deny incoming
+
+    - name: Habilitar UFW
+      ufw:
+        state: enabled
+
+    # Reiniciar serviços críticos para aplicar as mudanças
+    - name: Reiniciar o serviço do UFW
+      service:
+        name: ufw
+        state: restarted
+
+
